@@ -1,28 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-
-const useLocalStorage = (key, initialValue) => {
-  const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.log(error);
-      return initialValue;
-    }
-  });
-
-  const setValue = (value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  return [storedValue, setValue];
-};
+import { useLocalStorage } from './useLocalStorage';
+import { playerData } from '../data/playerData';
 
 export const usePlayerManagement = (settings) => {
   const [selectedPlayers, setSelectedPlayers] = useLocalStorage('selectedPlayers', []);
@@ -54,7 +32,7 @@ export const usePlayerManagement = (settings) => {
       setSelectedPlayers(prev => prev.filter(p => p.rank !== lastAction.player.rank));
     } else if (lastAction.action === 'addToTeam') {
       setMyTeam(prev => prev.filter(p => p.rank !== lastAction.player.rank));
-      setSelectedPlayers(prev => [...prev, lastAction.player]);
+      // We don't add the player back to selectedPlayers here
     }
     setHistory(prev => prev.slice(0, -1));
   }, [history, setSelectedPlayers, setMyTeam, setHistory]);
@@ -64,6 +42,14 @@ export const usePlayerManagement = (settings) => {
     setMyTeam([]);
     setHistory([]);
   }, [setSelectedPlayers, setMyTeam, setHistory]);
+
+  // Calculate available players
+  const availablePlayers = useCallback(() => {
+    return playerData.filter(player => 
+      !selectedPlayers.some(sp => sp.rank === player.rank) && 
+      !myTeam.some(mp => mp.rank === player.rank)
+    );
+  }, [selectedPlayers, myTeam]);
 
   // Sync localStorage on every change
   useEffect(() => {
@@ -80,7 +66,8 @@ export const usePlayerManagement = (settings) => {
     handlePlayerSelect,
     handleAddToMyTeam,
     undoLastAction,
-    resetDraft
+    resetDraft,
+    availablePlayers
   };
 };
 
